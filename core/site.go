@@ -74,7 +74,7 @@ type Site struct {
 	batteryMeters []api.Meter // Battery charging meters
 	auxMeters     []api.Meter // Auxiliary meters
 
-	tariffs     tariff.Tariffs           // Tariff
+	tariffs     *tariff.Tariffs          // Tariff
 	loadpoints  []*Loadpoint             // Loadpoints
 	coordinator *coordinator.Coordinator // Vehicles
 	prioritizer *prioritizer.Prioritizer // Power budgets
@@ -105,7 +105,7 @@ func NewSiteFromConfig(
 	other map[string]interface{},
 	loadpoints []*Loadpoint,
 	vehicles []api.Vehicle,
-	tariffs tariff.Tariffs,
+	tariffs *tariff.Tariffs,
 ) (*Site, error) {
 	site := NewSite()
 	if err := util.DecodeOther(other, site); err != nil {
@@ -128,7 +128,7 @@ func NewSiteFromConfig(
 		})
 	}
 
-	tariff := site.GetTariff(PlannerTariff)
+	tariff := tariffs.Get(tariff.Planner)
 
 	// give loadpoints access to vehicles and database
 	for _, lp := range loadpoints {
@@ -743,7 +743,7 @@ func (site *Site) update(lp Updater) {
 	}
 
 	var autoCharge bool
-	if tariff := site.GetTariff(PlannerTariff); tariff != nil {
+	if tariff := site.tariffs.Get(tariff.Planner); tariff != nil {
 		rates, err := tariff.Rates()
 
 		var rate api.Rate
@@ -798,7 +798,7 @@ func (site *Site) prepare() {
 	site.publish("residualPower", site.ResidualPower)
 	site.publish("smartCostLimit", site.SmartCostLimit)
 	site.publish("smartCostType", nil)
-	if tariff := site.GetTariff(PlannerTariff); tariff != nil {
+	if tariff := site.tariffs.Get(tariff.Planner); tariff != nil {
 		site.publish("smartCostType", tariff.Type().String())
 	}
 	site.publish("currency", site.tariffs.Currency.String())

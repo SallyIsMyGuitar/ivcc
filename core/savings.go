@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	DefaultGridPrice   = 0.30
-	DefaultFeedInPrice = 0.08
+	defaultGridPrice   = 0.30
+	defaultFeedInPrice = 0.08
 )
 
 // publisher gives access to the site's publish function
@@ -21,7 +21,7 @@ type publisher interface {
 // Site is the main configuration container. A site can host multiple loadpoints.
 type Savings struct {
 	clock                  clock.Clock
-	tariffs                tariff.Tariffs
+	tariffs                *tariff.Tariffs
 	started                time.Time // Boot time
 	updated                time.Time // Time of last charged value update
 	gridCharged            float64   // Grid energy charged since startup (kWh)
@@ -32,7 +32,7 @@ type Savings struct {
 	hasPublished           bool      // Has initial publish happened?
 }
 
-func NewSavings(tariffs tariff.Tariffs) *Savings {
+func NewSavings(tariffs *tariff.Tariffs) *Savings {
 	clock := clock.New()
 	savings := &Savings{
 		clock:   clock,
@@ -97,7 +97,7 @@ func (s *Savings) SavingsAmount() float64 {
 func (s *Savings) currentGridPrice() float64 {
 	price, err := s.tariffs.CurrentGridPrice()
 	if err != nil {
-		price = DefaultGridPrice
+		price = defaultGridPrice
 	}
 	return price
 }
@@ -105,7 +105,7 @@ func (s *Savings) currentGridPrice() float64 {
 func (s *Savings) currentFeedInPrice() float64 {
 	price, err := s.tariffs.CurrentFeedInPrice()
 	if err != nil {
-		price = DefaultFeedInPrice
+		price = defaultFeedInPrice
 	}
 	return price
 }

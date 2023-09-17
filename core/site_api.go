@@ -4,17 +4,13 @@ import (
 	"errors"
 
 	"github.com/evcc-io/evcc/api"
+	"github.com/evcc-io/evcc/core/loadpoint"
 	"github.com/evcc-io/evcc/core/site"
 	"github.com/evcc-io/evcc/server/db/settings"
+	"github.com/evcc-io/evcc/tariff"
 )
 
 var _ site.API = (*Site)(nil)
-
-const (
-	GridTariff    = "grid"
-	FeedinTariff  = "feedin"
-	PlannerTariff = "planner"
-)
 
 // GetPrioritySoc returns the PrioritySoc
 func (site *Site) GetPrioritySoc() float64 {
@@ -129,38 +125,57 @@ func (site *Site) GetVehicles() []api.Vehicle {
 	return site.coordinator.GetVehicles()
 }
 
+func hasDemand(lp loadpoint.API) bool {
+	// connected?
+	status := lp.GetStatus()
+	if status != api.StatusB && status != api.StatusC {
+		return false
+	}
+
+	// finished?
+	mode := lp.GetMode()
+	if status != api.StatusC && (mode == api.ModeMinPV || mode == api.ModeNow) {
+		return false
+	}
+
+	// disabled?
+	return mode != api.ModeOff
+}
+
+func (site *Site) maxChargePower() float64 {
+	var res float64
+	for _, lp := range site.loadpoints {
+		if hasDemand(lp) {
+			res += lp.GetMaxPower()
+		}
+	}
+	return res
+}
+
 // GetTariff returns the respective tariff if configured or nil
-func (site *Site) GetTariff(tariff string) api.Tariff {
+func (site *Site) GetTariff(name string, adjusted bool) api.Tariff {
 	site.Lock()
 	defer site.Unlock()
 
-	switch tariff {
-	case GridTariff:
-		return site.tariffs.Grid
-
-	case FeedinTariff:
-		return site.tariffs.FeedIn
-
-	case PlannerTariff:
-		switch {
-		case site.tariffs.Planner != nil:
-			// prio 0: manually set planner tariff
-			return site.tariffs.Planner
-
-		case site.tariffs.Grid != nil && site.tariffs.Grid.Type() == api.TariffTypePriceDynamic:
-			// prio 1: dynamic grid tariff
-			return site.tariffs.Grid
-
-		case site.tariffs.Co2 != nil:
-			// prio 2: co2 tariff
-			return site.tariffs.Co2
-
-		default:
-			// prio 3: static grid tariff
-			return site.tariffs.Grid
-		}
-
-	default:
+	t := site.tariffs.Get(name)
+	if t == nil {
 		return nil
 	}
+
+	if adjusted {
+		gen := site.tariffs.Get(tariff.Generation)
+		if gen == nil {
+			return nil
+		}
+
+		var feedin api.Tariff
+		if t.Type() != api.TariffTypeCo2 {
+			feedin = site.tariffs.Get(tariff.Feedin)
+		}
+
+		// merge generation forecast
+		return tariff.NewAdjusted(t, gen, feedin, site.maxChargePower())
+	}
+
+	return t
 }

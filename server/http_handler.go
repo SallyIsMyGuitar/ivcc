@@ -188,7 +188,17 @@ func tariffHandler(site site.API) http.HandlerFunc {
 		vars := mux.Vars(r)
 		tariff := vars["tariff"]
 
-		t := site.GetTariff(tariff)
+		var adjusted bool
+		if q := r.URL.Query().Get("adjusted"); q != "" {
+			val, err := strconv.ParseBool(q)
+			if err != nil {
+				jsonError(w, http.StatusBadRequest, err)
+				return
+			}
+			adjusted = val
+		}
+
+		t := site.GetTariff(tariff, adjusted)
 		if t == nil {
 			jsonError(w, http.StatusNotFound, errors.New("tariff not available"))
 			return
@@ -377,8 +387,18 @@ func planHandler(lp loadpoint.API) http.HandlerFunc {
 			return
 		}
 
+		var adjusted bool
+		if q := r.URL.Query().Get("adjusted"); q != "" {
+			val, err := strconv.ParseBool(q)
+			if err != nil {
+				jsonError(w, http.StatusBadRequest, err)
+				return
+			}
+			adjusted = val
+		}
+
 		power := lp.GetMaxPower()
-		requiredDuration, plan, err := lp.GetPlan(targetTime, power)
+		requiredDuration, plan, err := lp.GetPlan(targetTime, power, adjusted)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return

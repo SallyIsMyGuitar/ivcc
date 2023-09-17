@@ -1,24 +1,110 @@
 package tariff
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/evcc-io/evcc/api"
+	"github.com/evcc-io/evcc/util/config"
 	"golang.org/x/text/currency"
 )
 
-type Tariffs struct {
-	Currency                   currency.Unit
-	Grid, FeedIn, Co2, Planner api.Tariff
+const (
+	Grid       = "grid"
+	Feedin     = "feedin"
+	Generation = "generation"
+	Planner    = "planner"
+)
+
+type Config struct {
+	Currency   string
+	Grid       config.Typed
+	FeedIn     config.Typed
+	Co2        config.Typed
+	Generation config.Typed
+	Planner    config.Typed
 }
 
-func NewTariffs(currency currency.Unit, grid, feedin, co2 api.Tariff, planner api.Tariff) *Tariffs {
-	return &Tariffs{
-		Currency: currency,
-		Grid:     grid,
-		FeedIn:   feedin,
-		Co2:      co2,
-		Planner:  planner,
+type Tariffs struct {
+	Currency                               currency.Unit
+	Grid, FeedIn, Co2, Generation, Planner api.Tariff
+}
+
+func configure(name string, res *api.Tariff, cc config.Typed) error {
+	if cc.Type != "" {
+		t, err := NewFromConfig(cc.Type, cc.Other)
+		if err != nil {
+			return fmt.Errorf("%s: %w", name, err)
+		}
+		*res = t
+	}
+	return nil
+}
+
+func New(cc Config) (*Tariffs, error) {
+	res := &Tariffs{
+		Currency: currency.EUR,
+	}
+
+	if cc.Currency != "" {
+		var err error
+		if res.Currency, err = currency.ParseISO(cc.Currency); err != nil {
+			return nil, fmt.Errorf("currency code: %w", err)
+		}
+	}
+
+	if err := configure("grid", &res.Grid, cc.Grid); err != nil {
+		return nil, err
+	}
+	if err := configure("feedin", &res.FeedIn, cc.FeedIn); err != nil {
+		return nil, err
+	}
+	if err := configure("co2", &res.Co2, cc.Co2); err != nil {
+		return nil, err
+	}
+	if err := configure("generation", &res.Generation, cc.Generation); err != nil {
+		return nil, err
+	}
+	if err := configure("planner", &res.Planner, cc.Planner); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+// Get returns the respective tariff if configured or nil
+func (t *Tariffs) Get(tariff string) api.Tariff {
+	switch tariff {
+	case Grid:
+		return t.Grid
+
+	case Feedin:
+		return t.FeedIn
+
+	case Generation:
+		return t.Generation
+
+	case Planner:
+		switch {
+		case t.Planner != nil:
+			// prio 0: manually set planner tariff
+			return t.Planner
+
+		case t.Grid != nil && t.Grid.Type() == api.TariffTypePriceDynamic:
+			// prio 1: dynamic grid tariff
+			return t.Grid
+
+		case t.Co2 != nil:
+			// prio 2: co2 tariff
+			return t.Co2
+
+		default:
+			// prio 3: static grid tariff
+			return t.Grid
+		}
+
+	default:
+		return nil
 	}
 }
 
