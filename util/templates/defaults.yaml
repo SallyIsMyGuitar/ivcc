@@ -16,8 +16,8 @@ params:
       de: Gerätename
       en: Device name
     help:
-      de: USB-RS485 Gerätename
-      en: USB-RS485 device name
+      de: Gerätename der lokalen seriellen Schnittstelle
+      en: Device name of local serial port interface
     example: /dev/ttyUSB0
   - name: modbusbaudrate
     description:
@@ -412,12 +412,13 @@ presets:
 
 modbus:
   interfaces:
-    rs485: ["rs485serial", "rs485tcpip"]
-    tcpip: ["tcpip"]
+    tcp: ["tcp"]
+    rtu: ["rtuserial", "rtutcp", "tcp"]
+    ascii: ["asciiserial", "asciitcp"]
   types:
-    rs485serial:
+    rtuserial:
       description:
-        generic: Serial (USB-RS485 Adapter)
+        generic: Serial port (Modbus RTU)
       params:
         - reference: true
           referencename: modbusid
@@ -431,9 +432,9 @@ modbus:
         - reference: true
           referencename: modbuscomset
           name: comset
-    rs485tcpip:
+    rtutcp:
       description:
-        generic: Serial (Ethernet-RS485 Adapter)
+        generic: Serial device server (Modbus RTU)
       params:
         - reference: true
           referencename: modbusid
@@ -443,9 +444,37 @@ modbus:
         - reference: true
           name: port
           default: 502
-    tcpip:
+    tcp:
       description:
-        generic: TCP/IP
+        generic: Modbus TCP
+      params:
+        - reference: true
+          referencename: modbusid
+          name: id
+        - reference: true
+          name: host
+        - reference: true
+          name: port
+          default: 502
+    asciiserial:
+      description:
+        generic: Serial port (Modbus ASCII)
+      params:
+        - reference: true
+          referencename: modbusid
+          name: id
+        - reference: true
+          referencename: modbusdevice
+          name: device
+        - reference: true
+          referencename: modbusbaudrate
+          name: baudrate
+        - reference: true
+          referencename: modbuscomset
+          name: comset
+    asciitcp:
+      description:
+        generic: Serial device server (Modbus ASCII)
       params:
         - reference: true
           referencename: modbusid
