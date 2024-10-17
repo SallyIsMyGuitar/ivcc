@@ -6,7 +6,7 @@
 			:key="option.value"
 			type="button"
 			class="btn btn-sm flex-grow-1 flex-shrink-1"
-			:class="{ active: option.value === modelValue }"
+			:class="{ active: option.value === modelValue, 'btn--equal': equalWidth }"
 			:disabled="option.disabled"
 			@click="$emit('update:modelValue', option.value)"
 		>
@@ -22,6 +22,7 @@ export default {
 		id: String,
 		options: Array,
 		modelValue: [Number, String],
+		equalWidth: Boolean,
 	},
 	emits: ["update:modelValue"],
 };
@@ -32,11 +33,10 @@ export default {
 	border: 2px solid var(--evcc-default-text);
 	border-radius: 17px;
 	padding: 4px;
+	background: var(--evcc-background);
 }
 
 .btn {
-	/* equal width buttons */
-	flex-basis: 0;
 	white-space: nowrap;
 	border-radius: 12px;
 	padding: 0.1em 0.8em;
@@ -44,6 +44,9 @@ export default {
 	border: none;
 	overflow-x: hidden;
 	text-overflow: ellipsis;
+}
+.btn--equal {
+	flex-basis: 0;
 }
 .btn:hover {
 	color: var(--evcc-gray);
